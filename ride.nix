@@ -1,54 +1,65 @@
 { lib
-, stdenv
-
-, fetchurl
-, dpkg
+, buildNpmPackage
+, fetchFromGitHub
 , autoPatchelfHook
 , makeWrapper
-
-, electron_13
-
-, alsaLib
-, gtk3
-, mesa
-, nss_latest
-, xorg
+, electron
+, python3
 }:
 
-stdenv.mkDerivation rec {
+let
   pname = "ride";
-  version = "4.4.3732-1";
+  version = "4.5.3770";
+  rev = "246649aad81daadfa8ac7e0af7c0206e49b4e337";
 
-  shortVersion = lib.concatStringsSep "." (lib.take 2 (lib.splitString "." version));
-
-  # deal with '-1' suffix...
-  cleanedVersion = builtins.replaceStrings [ "-1" ] [ "" ] version;
-
-  src = fetchurl {
-    url = "https://github.com/Dyalog/ride/releases/download/v${cleanedVersion}/ride-${version}_amd64.deb";
-    sha256 = "sha256-kPqs/Xqk8cekQuMIbgIWOnUS+0twpTjtFSpkuP9Ynoo=";
+  src = fetchFromGitHub {
+    inherit rev;
+    owner = "Dyalog";
+    repo = pname;
+    hash = "sha256-j3flZ1sKsYRkJ79yxmR4NKcOSf66bHsCXiupKhUAFcQ=";
   };
 
-  nativeBuildInputs = [ autoPatchelfHook ];
+  versionJSON = builtins.toJSON {
+    versionInfo = {
+      inherit version rev;
+      date = "2023-05-17 17:45:47 +0200";
+    };
+  };
+in
+buildNpmPackage {
 
-  buildInputs = [
-    dpkg
-    makeWrapper
+  inherit pname version src;
 
-    alsaLib
-    gtk3
-    mesa
-    nss_latest
-    xorg.libxshmfence
-  ];
 
-  unpackPhase = "dpkg-deb -x $src .";
+  # Skips the auto-downloaded electron-chromedriver binary
+  postPatch = "sed -i '/spectron/d' package.json";
 
-  installPhase = ''
-    mkdir -p $out/ride $out/bin
-    mv ./opt/ride-${shortVersion}/* $out/ride
-    makeWrapper ${electron_13}/bin/electron $out/bin/ride \
-        --add-flags $out/ride/resources/app  
+  # Skips the auto-downloaded electron binary
+  ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
+
+  npmDepsHash = "sha256-mgkOTuspqoM4yZMr2u7f+0qSgzIMz033GXezuPA7rkQ=";
+  dontNpmBuild = true;
+
+
+  nativeBuildInputs = [ python3 makeWrapper ];
+
+  # This is the replacement for the `mk` script in the source repo
+  postInstall = ''
+    # Generate version-info
+    mkdir $out/lib/node_modules/ride45/_
+    echo 'D=${versionJSON}' > $out/lib/node_modules/ride45/_/version.js
+    echo ${version} > $out/lib/node_modules/ride45/_/version
+
+    # Call electron manually
+    makeWrapper ${electron}/bin/electron $out/bin/ride \
+    --add-flags $out/lib/node_modules/ride45
   '';
 
+  meta = with lib; {
+    description = "RIDE for Dyalog APL";
+    homepage = "https://github.com/Dyalog/ride";
+    license = licenses.mit;
+    maintainers = with maintainers; [ tomasajt ];
+    platforms = [ "x86_64-linux" ];
+  };
 }
