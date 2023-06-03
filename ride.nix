@@ -1,10 +1,9 @@
 { lib
-, buildNpmPackage
 , fetchFromGitHub
-, autoPatchelfHook
+, buildNpmPackage
 , makeWrapper
-, electron
 , python3
+, electron
 }:
 
 let
@@ -39,7 +38,7 @@ buildNpmPackage {
   npmDepsHash = "sha256-mgkOTuspqoM4yZMr2u7f+0qSgzIMz033GXezuPA7rkQ=";
   dontNpmBuild = true;
 
-  nativeBuildInputs = [ python3 makeWrapper ];
+  nativeBuildInputs = [ makeWrapper python3 ];
 
   # This is the replacement for the `mk` script in the source repo
   postInstall = ''
