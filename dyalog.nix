@@ -4,6 +4,7 @@
 , fetchurl
 , dpkg
 , autoPatchelfHook
+, makeWrapper
 
 , alsaLib
 , atk
@@ -31,11 +32,9 @@ stdenv.mkDerivation {
 
   inherit pname version src;
 
+  nativeBuildInputs = [ autoPatchelfHook makeWrapper dpkg ];
+
   buildInputs = [
-    autoPatchelfHook
-
-    dpkg
-
     alsaLib
     ncurses5
     glib
@@ -54,8 +53,10 @@ stdenv.mkDerivation {
     mkdir -p $out/dyalog $out/bin
     mv ./opt/mdyalog/${shortVersion}/64/unicode/* $out/dyalog/
 
-    ln -s $out/dyalog/dyalog $out/bin/dyalog
-    ln -s $out/dyalog/mapl $out/bin/mapl
+    makeWrapper $out/dyalog/dyalog $out/bin/dyalog \
+            --set SESSION_FILE $out/dyalog/default.dse
+    makeWrapper $out/dyalog/mapl $out/bin/mapl \
+            --set SESSION_FILE $out/dyalog/default.dse
   '';
 
   meta = with lib; {
