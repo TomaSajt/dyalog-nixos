@@ -30,7 +30,6 @@ buildNpmPackage {
 
   inherit pname version src;
 
-
   # Skips the auto-downloaded electron-chromedriver binary
   postPatch = "sed -i '/spectron/d' package.json";
 
@@ -40,23 +39,32 @@ buildNpmPackage {
   npmDepsHash = "sha256-mgkOTuspqoM4yZMr2u7f+0qSgzIMz033GXezuPA7rkQ=";
   dontNpmBuild = true;
 
-
   nativeBuildInputs = [ python3 makeWrapper ];
 
   # This is the replacement for the `mk` script in the source repo
   postInstall = ''
-    # Generate version-info
-    mkdir $out/lib/node_modules/ride45/_
-    echo 'D=${versionJSON}' > $out/lib/node_modules/ride45/_/version.js
-    echo ${version} > $out/lib/node_modules/ride45/_/version
+    cd $out/lib/node_modules/ride45
 
+    mkdir $out/app
+    cp -r {src,lib,node_modules,D.png,favicon.*,*.html,main.js,package.json} $out/app
+
+    mkdir $out/app/style
+    cp -r style/{fonts,img,*.css} $out/app/style
+
+    rm -r $out/lib
+
+    # Generate version-info
+    mkdir $out/app/_
+    echo 'D=${versionJSON}' > $out/app/_/version.js
+    echo ${version} > $out/app/_/version
+  
     # Call electron manually
     makeWrapper ${electron}/bin/electron $out/bin/ride \
-    --add-flags $out/lib/node_modules/ride45
+            --add-flags $out/app
   '';
 
   meta = with lib; {
-    description = "RIDE for Dyalog APL";
+    description = "Remote Integrated Development Environment for Dyalog APL";
     homepage = "https://github.com/Dyalog/ride";
     license = licenses.mit;
     maintainers = with maintainers; [ tomasajt ];
