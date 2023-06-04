@@ -4,6 +4,8 @@
 , makeWrapper
 , python3
 , electron
+, dyalog
+, withDyalog ? true
 }:
 
 let
@@ -56,10 +58,13 @@ buildNpmPackage {
     mkdir $out/app/_
     echo 'D=${versionJSON}' > $out/app/_/version.js
     echo ${version} > $out/app/_/version
+
   
     # Call electron manually
     makeWrapper ${electron}/bin/electron $out/bin/ride \
             --add-flags $out/app
+  '' + lib.optionalString withDyalog ''
+    sed -i 's|const interpreters = \[\]|const interpreters = \[{exe:"${dyalog}/bin/dyalog",ver:\[18,2\],bits:64,edition:"unicode",opt:""}\]|' $out/app/src/cn.js
   '';
 
   meta = with lib; {
@@ -70,3 +75,4 @@ buildNpmPackage {
     platforms = [ "x86_64-linux" ];
   };
 }
+

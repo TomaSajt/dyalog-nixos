@@ -59,11 +59,4 @@ stdenv.mkDerivation {
             --set SESSION_FILE $out/dyalog/default.dse
   '';
 
-  meta = with lib; {
-    description = "Dyalog APL";
-    homepage = "https://www.dyalog.com";
-    license = licenses.unfree;
-    maintainers = with maintainers; [ tomasajt ];
-    platforms = [ "x86_64-linux" ];
-  };
 }
