@@ -1,5 +1,7 @@
 { pkgs
 , lib
+, src
+, rev
 , fetchFromGitHub
 , buildNpmPackage
 , makeWrapper
@@ -12,27 +14,19 @@
 
 let
   pname = "ride";
-  version = "4.5.3770";
-  rev = "246649aad81daadfa8ac7e0af7c0206e49b4e337";
-
-  src = fetchFromGitHub {
-    inherit rev;
-    owner = "Dyalog";
-    repo = pname;
-    hash = "sha256-j3flZ1sKsYRkJ79yxmR4NKcOSf66bHsCXiupKhUAFcQ=";
-  };
+  version = "4.5";
 
   versionJSON = builtins.toJSON {
     versionInfo = {
       inherit version rev;
-      date = "2023-05-17 17:45:47 +0200";
+      date = "Unknown";
     };
   };
 
   interpretersJSON = builtins.toJSON (builtins.map
     (intr:
       {
-        exe = "${intr}/bin/dyalog";
+        exe = "${intr}/bin/mapl";
         ver = lib.splitString "." intr.version;
         bits = 64;
         edition = "unicode";
@@ -60,27 +54,33 @@ buildNpmPackage {
   postInstall = ''
     cd $out/lib/node_modules/ride45
 
-    mkdir $out/app
-    cp -r {src,lib,node_modules,D.png,favicon.*,*.html,main.js,package.json} $out/app
+    mkdir $out/ride
+    cp -r {src,lib,node_modules,D.png,favicon.*,*.html,main.js,package.json} $out/ride
 
-    mkdir $out/app/style
-    cp -r style/{fonts,img,*.css} $out/app/style
+    mkdir $out/ride/style
+    cp -r style/{fonts,img,*.css} $out/ride/style
+
+    cd $out/ride/node_modules
+    rm -r {.bin,monaco-editor/{dev,esm,min-maps}}
+    find . -type f -name '*.map' -exec rm -rf {} +
+    find . -type d -name 'test' -exec rm -rf {} +
 
     rm -r $out/lib
 
     # Generate version-info
-    mkdir $out/app/_
-    echo 'D=${versionJSON}' > $out/app/_/version.js
-    echo ${version} > $out/app/_/version
+    mkdir $out/ride/_
+    cd $out/ride/_
+    echo 'D=${versionJSON}' > version.js
+    echo ${version} > version
 
   
     # Call electron manually
-    makeWrapper ${electron}/bin/electron $out/bin/ride \
-            --add-flags $out/app \
-            --add-flags --enable-logging
+    makeWrapper ${electron}/bin/electron $out/bin/ride --add-flags $out/ride
+
   '' + lib.optionalString patchInterpreters ''
-    echo 'module.exports = ${interpretersJSON}' > $out/app/src/interpreters-nixpatch.js
-    sed -i 's|interpreters = \[\]|interpreters = require("\.\/interpreters-nixpatch\.js")|' $out/app/src/cn.js
+    cd $out/ride/src
+    echo 'module.exports = ${interpretersJSON}' > interpreters-nixpatch.js
+    sed -i 's|interpreters = \[\]|interpreters = require("\.\/interpreters-nixpatch\.js")|' cn.js
   '';
 
   meta = with lib; {
