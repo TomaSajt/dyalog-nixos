@@ -1,13 +1,13 @@
-{ lib
+{ pkgs
+, lib
 , fetchFromGitHub
 , buildNpmPackage
 , makeWrapper
 , python3
 , electron
 , writeScript
-, dyalog
-, dyalogInterpreters ? [ dyalog ]
-, withDyalog ? true
+, patchInterpreters ? true
+, interpreters ? [ pkgs.dyalog ]
 }:
 
 let
@@ -30,26 +30,23 @@ let
   };
 
   interpretersJSON = builtins.toJSON (builtins.map
-    (dyalog:
+    (intr:
       {
-        exe = "${dyalog}/bin/dyalog";
-        ver = lib.take 2 (lib.splitString "." dyalog.version);
+        exe = "${intr}/bin/dyalog";
+        ver = lib.splitString "." intr.version;
         bits = 64;
         edition = "unicode";
         opt = "";
       }
     )
-    dyalogInterpreters);
+    interpreters);
 
-
-  interpretersPatchFile = writeScript "patch" ("module.exports=" + interpretersJSON);
 in
 buildNpmPackage {
 
   inherit pname version src;
 
-  # Skips the auto-downloaded electron-chromedriver binary
-  postPatch = "sed -i '/spectron/d' package.json";
+  npmInstallFlags = [ "--omit=dev" ];
 
   # Skips the auto-downloaded electron binary
   ELECTRON_SKIP_BINARY_DOWNLOAD = "1";
@@ -79,10 +76,11 @@ buildNpmPackage {
   
     # Call electron manually
     makeWrapper ${electron}/bin/electron $out/bin/ride \
-            --add-flags $out/app
-  '' + lib.optionalString withDyalog ''
-    ln -s ${interpretersPatchFile} $out/app/src/interpreters-nixpatch.js
-    sed -i 's|const interpreters = \[\]|const interpreters = require("\.\/interpreters-nixpatch\.js")|' $out/app/src/cn.js
+            --add-flags $out/app \
+            --add-flags --enable-logging
+  '' + lib.optionalString patchInterpreters ''
+    echo 'module.exports = ${interpretersJSON}' > $out/app/src/interpreters-nixpatch.js
+    sed -i 's|interpreters = \[\]|interpreters = require("\.\/interpreters-nixpatch\.js")|' $out/app/src/cn.js
   '';
 
   meta = with lib; {
