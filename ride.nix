@@ -4,7 +4,9 @@
 , makeWrapper
 , python3
 , electron
+, writeScript
 , dyalog
+, dyalogInterpreters ? [ dyalog ]
 , withDyalog ? true
 }:
 
@@ -26,6 +28,21 @@ let
       date = "2023-05-17 17:45:47 +0200";
     };
   };
+
+  interpretersJSON = builtins.toJSON (builtins.map
+    (dyalog:
+      {
+        exe = "${dyalog}/bin/dyalog";
+        ver = lib.take 2 (lib.splitString "." dyalog.version);
+        bits = 64;
+        edition = "unicode";
+        opt = "";
+      }
+    )
+    dyalogInterpreters);
+
+
+  interpretersPatchFile = writeScript "patch" ("module.exports=" + interpretersJSON);
 in
 buildNpmPackage {
 
@@ -64,7 +81,8 @@ buildNpmPackage {
     makeWrapper ${electron}/bin/electron $out/bin/ride \
             --add-flags $out/app
   '' + lib.optionalString withDyalog ''
-    sed -i 's|const interpreters = \[\]|const interpreters = \[{exe:"${dyalog}/bin/dyalog",ver:\[18,2\],bits:64,edition:"unicode",opt:""}\]|' $out/app/src/cn.js
+    ln -s ${interpretersPatchFile} $out/app/src/interpreters-nixpatch.js
+    sed -i 's|const interpreters = \[\]|const interpreters = require("\.\/interpreters-nixpatch\.js")|' $out/app/src/cn.js
   '';
 
   meta = with lib; {
