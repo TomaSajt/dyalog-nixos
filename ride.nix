@@ -8,7 +8,7 @@
 , python3
 , electron
 , writeScript
-, patchInterpreters ? true
+, patchInterpreterList ? false
 , interpreters ? [ pkgs.dyalog ]
 }:
 
@@ -26,7 +26,7 @@ let
   interpretersJSON = builtins.toJSON (builtins.map
     (intr:
       {
-        exe = "${intr}/bin/mapl";
+        exe = "${intr}/bin/dyalog";
         ver = lib.splitString "." intr.version;
         bits = 64;
         edition = "unicode";
@@ -77,7 +77,7 @@ buildNpmPackage {
     # Call electron manually
     makeWrapper ${electron}/bin/electron $out/bin/ride --add-flags $out/ride
 
-  '' + lib.optionalString patchInterpreters ''
+  '' + lib.optionalString patchInterpreterList ''
     cd $out/ride/src
     echo 'module.exports = ${interpretersJSON}' > interpreters-nixpatch.js
     sed -i 's|interpreters = \[\]|interpreters = require("\.\/interpreters-nixpatch\.js")|' cn.js

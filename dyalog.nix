@@ -6,16 +6,9 @@
 , autoPatchelfHook
 , makeWrapper
 
-, alsaLib
-, atk
-, cups
 , glib
-, gtk2
-, nss_latest
 , ncurses5
-, pango
 , unixODBC
-, xorg
 }:
 let
   pname = "dyalog";
@@ -35,28 +28,28 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ autoPatchelfHook makeWrapper dpkg ];
 
   buildInputs = [
-    alsaLib
     ncurses5
     glib
-    gtk2
-    nss_latest
     unixODBC
-
-    xorg.libXdamage
-    xorg.libXScrnSaver
-    xorg.libXtst
   ];
 
   unpackPhase = "dpkg-deb -x $src .";
 
   installPhase = ''
-    mkdir -p $out/dyalog $out/bin
-    mv ./opt/mdyalog/${shortVersion}/64/unicode/* $out/dyalog/
+    mkdir -p $out/dyalog $out/bin $out/share/applications
+    mv ./opt/mdyalog/${shortVersion}/64/unicode/* $out/dyalog
+    cd $out/dyalog 
+
+    # Remove RIDE files and other stuff that's probably not going to be used
+    rm -r {RIDEapp,help,swiftshader,locales,xfsrc,scriptbin}
+    rm {cef*.pak,chrome-sandbox,libEGL.so,libGLESv2.so,libcef.so,v8_context_snapshot.bin,snapshot_blob.bin,natives_blob.bin,icudtl.dat,Dyalog.Net.Bridge*,magic,lib/htmlrenderer.so}
+    
+    mv dyalog.desktop $out/share/applications
 
     makeWrapper $out/dyalog/dyalog $out/bin/dyalog \
-            --set SESSION_FILE $out/dyalog/default.dse
-    makeWrapper $out/dyalog/mapl $out/bin/mapl \
-            --set SESSION_FILE $out/dyalog/default.dse
+        --set SESSION_FILE $out/dyalog/default.dse \
+        --add-flags APLKEYS=$out/dyalog/aplkeys \
+        --add-flags APLTRANS=$out/dyalog/apltrans
   '';
 
 }
